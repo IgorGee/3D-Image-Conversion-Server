@@ -2,4 +2,5 @@ node_modules
 /3dFiles/*.stl
 /3dFiles/*.g3d*
 /3dFiles/*.fbx
+/3dFiles/*.zip
 /uploads/

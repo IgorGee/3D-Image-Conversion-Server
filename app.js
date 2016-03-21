@@ -62,7 +62,9 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
 
     // execute python script for importing, decimating, and exporting
     function runPythonFixer() {
-        exec('cd 3dFiles; sudo blender -b -P import_decimate_export.py; cd ..', function(error, stdout, stderr) {
+        exec('cd 3dFiles; sudo blender -b -P import_decimate_export.py; cd ..', callback);
+
+        function callback(error, stdout, stderr) {
             console.log('Running python script');
                 console.log(error);
                 console.log(stdout);
@@ -76,12 +78,14 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
             }
 
             runFbxConv();
-        });
+        }
     }
 
     // execute fbx-conv
     function runFbxConv() {
-        exec('../conversion-tools/fbx-conv/fbx-conv-lin64 -o g3db ./3dFiles/test.fbx ./3dFiles/test.g3db', function(error, stdout, stderr) {
+        exec('../conversion-tools/fbx-conv/fbx-conv-lin64 -o g3db ./3dFiles/test.fbx ./3dFiles/test.g3db', callback);
+
+        function callback(error, stdout, stderr) {
             console.log('Running fbx-conv');
             if (error) {
                 console.log(error);
@@ -89,17 +93,32 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
             } else {
                 console.log("Success\n");
             }
-            sendModel();
-        });
+            zipModels();
+        }
     }
 
-    function sendModel() {
-        res.sendFile("./3dFiles/test.g3db", {root: __dirname}, function(err) {
+    function zipModels() {
+        exec('cd 3dFiles; zip test.zip test.stl test.g3db', callback);
+
+        function callback(error, stdout, stderr) {
+            console.log('Zipping files...');
+            if (error) {
+                console.log(error);
+                console.log(stderr);
+            } else {
+                console.log("Success\n");
+            }
+            sendModels();
+        }
+    }
+
+    function sendModels() {
+        res.sendFile("./3dFiles/test.zip", {root: __dirname}, function(err) {
             if (err) {
                 console.log(err);
                 res.status(err.status || 500).end();
             } else {
-                console.log('Sent: test.g3db');
+                console.log('Sent: test.zip');
             }
         });
     }
