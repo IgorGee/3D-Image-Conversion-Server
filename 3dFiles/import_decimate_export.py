@@ -4,6 +4,11 @@ stl_file = 'original.stl'
 fbx_file = 'test.fbx'
 new_stl_file = 'test.stl'
 
+# Delete all existing objects
+for ob in bpy.context.scene.objects:
+    ob.select = True
+bpy.ops.object.delete()
+
 bpy.ops.import_mesh.stl(filepath=stl_file)
 ob = bpy.context.object
 
