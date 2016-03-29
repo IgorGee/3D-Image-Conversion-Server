@@ -26,6 +26,7 @@ app.get('/', function(req, res) {
 
 app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     var uuidJS = uuid.v4();
+    var retryAttempts = 0;
     // console.log(req.file);
 
     var options = {
@@ -38,15 +39,20 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
         }
     }
 
-    restler.post(Constants.UPDATE_SCENE_ENDPOINT, options).on('complete', function(response, body) {
-        console.log();
-        console.log(response);
-        console.log();
-        // console.log(error);
-        // console.log(body);
+    tryAgain();
 
-        get3DModel(body);
-    });
+    function tryAgain() {
+        restler.post(Constants.UPDATE_SCENE_ENDPOINT, options).on('complete', function(response, body) {
+            console.log();
+            console.log(response);
+            console.log();
+            // console.log(error);
+            // console.log(body);
+
+            get3DModel(body);
+        });
+    }
+
 
     function get3DModel(body) {
         restler.get(Constants.SAVE_MODEL_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
@@ -115,13 +121,20 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     function sendModels() {
         res.sendFile("./3dFiles/test.zip", {root: __dirname}, function(err) {
             if (err) {
-                console.log(err);
-                res.status(err.status || 500).end();
+                if (retryAttempts < 5) {
+                    tryAgain();
+                    retryAttempts++;
+                    return;
+                } else {
+                    console.log(err);
+                    res.status(err.status || 500).end();
+                }
             } else {
                 console.log('Sent: test.zip');
             }
         });
     }
+
 });
 
 app.listen(80, function() {
