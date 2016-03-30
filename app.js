@@ -13,8 +13,6 @@ var exec = require('child_process').exec;
 var cmd = '/usr/games/fortune | /usr/games/cowsay';
 var Constants = require(__dirname + '/Constants.js')
 
-var stlFilePath = "./3dFiles/original.stl";
-
 app.get('/', function(req, res) {
     exec(cmd, function(error, stdout, stderr) {
         console.log('Running fortune into cowsay');
@@ -27,21 +25,27 @@ app.get('/', function(req, res) {
 app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     var uuidJS = uuid.v4();
     var retryAttempts = 0;
-    // console.log(req.file);
+    var stlFilePath = "./3dFiles/" + req.file.filename + ".stl";
+    var fbxFilePath = "./3dFiles/" + req.file.filename + ".fbx";
+    var g3dbFilePath = "./3dFiles/" + req.file.filename + ".g3db";
+    var zipFilePath = "./3dFiles/" + req.file.filename + ".zip";
 
-    var options = {
-        multipart: true,
-        headers: {},
-        data: {
-            shapeJS_img: restler.file('./uploads/' + req.file.filename, null, req.file.size),
-            jobID: uuidJS,
-            script: Constants.JS_2D_TO_3D
-        }
-    }
+    console.log("Request File: ");
+    console.log(req.file)
 
     tryAgain();
 
     function tryAgain() {
+        var options = {
+            multipart: true,
+            headers: {},
+            data: {
+                shapeJS_img: restler.file('./uploads/' + req.file.filename, null, req.file.size),
+                jobID: uuidJS,
+                script: Constants.JS_2D_TO_3D
+            }
+        }
+
         restler.post(Constants.UPDATE_SCENE_ENDPOINT, options).on('complete', function(response, body) {
             console.log();
             console.log(response);
@@ -68,7 +72,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
 
     // execute python script for importing, decimating, and exporting
     function runPythonFixer() {
-        exec('cd 3dFiles; sudo blender -b -P import_decimate_export.py; cd ..', callback);
+        exec('sudo blender -b -P 3dFiles/import_decimate_export.py -- ' + stlFilePath, callback);
 
         function callback(error, stdout, stderr) {
             console.log('Running python script');
@@ -89,7 +93,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
 
     // execute fbx-conv
     function runFbxConv() {
-        exec('../conversion-tools/fbx-conv/fbx-conv-lin64 -o g3db ./3dFiles/test.fbx ./3dFiles/test.g3db', callback);
+        exec('../conversion-tools/fbx-conv/fbx-conv-lin64 ' + fbxFilePath + ' ' + g3dbFilePath, callback);
 
         function callback(error, stdout, stderr) {
             console.log('Running fbx-conv');
@@ -104,10 +108,11 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     }
 
     function zipModels() {
-        exec('cd 3dFiles; zip test.zip test.stl test.g3db', callback);
+        exec('zip -j ' + zipFilePath + ' ' + stlFilePath + ' ' + g3dbFilePath, callback);
 
         function callback(error, stdout, stderr) {
             console.log('Zipping files...');
+            console.log(stdout);
             if (error) {
                 console.log(error);
                 console.log(stderr);
@@ -119,7 +124,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     }
 
     function sendModels() {
-        res.sendFile("./3dFiles/test.zip", {root: __dirname}, function(err) {
+        res.sendFile(zipFilePath, {root: __dirname}, function(err) {
             if (err) {
                 if (retryAttempts < 5) {
                     tryAgain();
@@ -130,9 +135,49 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
                     res.status(err.status || 500).end();
                 }
             } else {
-                console.log('Sent: test.zip');
+                console.log('Sent: ' + zipFilePath);
+                cleanUp();
             }
         });
+    }
+
+    function cleanUp() {
+        console.log("Cleaning " + req.file.originalname);
+
+        fs.unlink(req.file.path, function(err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+        console.log("Deleted source image");
+
+        fs.unlink(stlFilePath, function(err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+        console.log("Deleted stlFile");
+
+        fs.unlink(fbxFilePath, function(err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+        console.log("Deleted fbxFile");
+
+        fs.unlink(g3dbFilePath, function(err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+        console.log("Deleted g3dbFile");
+
+        fs.unlink(zipFilePath, function(err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+        console.log("Deleted zipFile");
     }
 
 });

@@ -1,8 +1,8 @@
+import sys
 import bpy
 
-stl_file = 'original.stl'
-fbx_file = 'test.fbx'
-new_stl_file = 'test.stl'
+stl_file = sys.argv[sys.argv.index("--") + 1]
+fbx_file = stl_file[0:-4] + ".fbx"
 
 # Delete all existing objects
 for ob in bpy.context.scene.objects:
@@ -22,4 +22,4 @@ print('Edges:', str(len(ob.data.edges)))
 print('Polygons:', str(len(ob.data.polygons)))
 
 bpy.ops.export_scene.fbx(filepath=fbx_file)
-bpy.ops.export_mesh.stl(filepath=new_stl_file)
+bpy.ops.export_mesh.stl(filepath=stl_file)
