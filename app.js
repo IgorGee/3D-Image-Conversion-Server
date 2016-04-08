@@ -60,13 +60,25 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
 
     function get3DModel(body) {
         restler.get(Constants.SAVE_MODEL_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
-        .on('complete', function(body) {
-            fs.writeFile(stlFilePath, body, function(err) {
-                if (err) {
-                    return console.log(err);
+        .on('complete', function(response) {
+            if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
+                console.log("410 Error, Retrying now...")
+                if (retryAttempts < 5) {
+                    tryAgain();
+                    retryAttempts++;
+                    return;
+                } else {
+                    console.log("Servers too crazy atm, try again later.");
+                    res.status(500).end();
                 }
-                runPythonFixer();
-            });
+            } else {
+                fs.writeFile(stlFilePath, response, function(err) {
+                    if (err) {
+                        return console.log(err);
+                    }
+                    runPythonFixer();
+                });
+            }
         });
     }
 
