@@ -25,6 +25,7 @@ app.get('/', function(req, res) {
 app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     var uuidJS = uuid.v4();
     var retryAttempts = 0;
+    var previewImageFilePath = "./3dFiles/" + req.file.filename + ".jpg";
     var stlFilePath = "./3dFiles/" + req.file.filename + ".stl";
     var fbxFilePath = "./3dFiles/" + req.file.filename + ".fbx";
     var g3dbFilePath = "./3dFiles/" + req.file.filename + ".g3db";
@@ -46,24 +47,47 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
             }
         }
 
-        restler.post(Constants.UPDATE_SCENE_ENDPOINT, options).on('complete', function(response, body) {
+        restler.post(Constants.UPDATE_SCENE_ENDPOINT, options).on('complete', function(response) {
             console.log();
             console.log(response);
             console.log();
             // console.log(error);
             // console.log(body);
 
-            get3DModel(body);
+            getPreviewImage();
+            get3DModel();
         });
     }
 
+    function getPreviewImage() {
+        restler.get(Constants.MAKE_IMAGE_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
+        .on('complete', function(response) {
+            if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
+                console.log("410 Error, Retrying now...")
+                if (retryAttempts < 10) {
+                    tryAgain();
+                    retryAttempts++;
+                    return;
+                } else {
+                    console.log("Servers too crazy atm, try again later.");
+                    res.status(500).end();
+                }
+            } else {
+                fs.writeFile(previewImageFilePath, response, function(err) {
+                    if (err) {
+                        return console.log(err);
+                    }
+                });
+            }
+        });
+    }
 
-    function get3DModel(body) {
+    function get3DModel() {
         restler.get(Constants.SAVE_MODEL_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
         .on('complete', function(response) {
             if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
                 console.log("410 Error, Retrying now...")
-                if (retryAttempts < 5) {
+                if (retryAttempts < 10) {
                     tryAgain();
                     retryAttempts++;
                     return;
@@ -120,7 +144,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     }
 
     function zipModels() {
-        exec('zip -j ' + zipFilePath + ' ' + stlFilePath + ' ' + g3dbFilePath, callback);
+        exec('zip -j ' + zipFilePath + ' ' + stlFilePath + ' ' + g3dbFilePath + ' ' + previewImageFilePath, callback);
 
         function callback(error, stdout, stderr) {
             console.log('Zipping files...');
@@ -138,7 +162,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     function sendModels() {
         res.sendFile(zipFilePath, {root: __dirname}, function(err) {
             if (err) {
-                if (retryAttempts < 5) {
+                if (retryAttempts < 10) {
                     tryAgain();
                     retryAttempts++;
                     return;
@@ -190,6 +214,13 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
             }
         });
         console.log("Deleted zipFile");
+
+        fs.unlink(previewImageFilePath, function(err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+        console.log("Deleted preview image");
     }
 
 });
