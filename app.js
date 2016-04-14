@@ -54,8 +54,12 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
             // console.log(error);
             // console.log(body);
 
-            getPreviewImage();
-            get3DModel();
+            try {
+                fs.accessSync(previewImageFilePath, fs.F_OK);
+                get3DModel();
+            } catch (e) {
+                getPreviewImage();
+            }
         });
     }
 
@@ -78,6 +82,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
                         return console.log(err);
                     }
                 });
+                get3DModel();
             }
         });
     }
