@@ -230,7 +230,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
 
 });
 
-app.listen(80, function() {
-    console.log('Listening on Port 80');
+app.listen(process.env.PORT, function() {
+    console.log('Listening on Port ' + process.env.PORT);
 });
 
