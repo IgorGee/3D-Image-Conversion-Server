@@ -14,12 +14,7 @@ var cmd = '/usr/games/fortune | /usr/games/cowsay';
 var Constants = require(__dirname + '/Constants.js')
 
 app.get('/', function(req, res) {
-    exec(cmd, function(error, stdout, stderr) {
-        console.log('Running fortune into cowsay');
-        console.log(stdout);
-        console.log(stderr);
-        if (error != null) console.log(error);
-    }).stdout.pipe(res);
+    res.send('hello world');
 });
 
 app.post('/image', upload.single('shapeJS_img'), function(req, res) {
