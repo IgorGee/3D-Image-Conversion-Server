@@ -6,6 +6,7 @@
     "ssl-root-cas": "~1.1.10",
     "node-uuid": "~1.4.7",
     "restler": "~3.4.0",
-    "async": "~1.5.2"
+    "async": "~1.5.2",
+    "body-parser": "~1.15.0"
   }
 }
