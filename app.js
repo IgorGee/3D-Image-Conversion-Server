@@ -1,7 +1,5 @@
 var restler = require('restler');
 var uuid = require('node-uuid');
-var sslRootCAs = require('ssl-root-cas/latest');
-sslRootCAs.inject();
 var fs = require('fs');
 var request = require('request');
 var async = require('async');
