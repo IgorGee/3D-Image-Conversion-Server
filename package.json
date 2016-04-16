@@ -1,12 +1,14 @@
 {
   "dependencies": {
+    "async": "~1.5.2",
+    "braintree": "^1.37.1",
     "express": "~4.13.4",
     "multer": "~1.1.0",
-    "request": "~2.69.0",
-    "ssl-root-cas": "~1.1.10",
     "node-uuid": "~1.4.7",
+    "request": "~2.69.0",
     "restler": "~3.4.0",
     "async": "~1.5.2",
     "body-parser": "~1.15.0"
+    "ssl-root-cas": "~1.1.10"
   }
 }

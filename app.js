@@ -11,7 +11,6 @@ var multer = require('multer');
 var upload = multer({dest:'./uploads/'});
 var bodyParser = require('body-parser');
 var exec = require('child_process').exec;
-var cmd = '/usr/games/fortune | /usr/games/cowsay';
 var Constants = require(__dirname + '/Constants.js')
 
 var braintree = require("braintree");
