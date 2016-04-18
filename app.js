@@ -43,121 +43,109 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
             }
         };
 
-        restler.post(Constants.UPDATE_SCENE_ENDPOINT, options).on('complete', function(response) {
-            console.log();
-            console.log(response);
-            console.log();
-            // console.log(error);
-            // console.log(body);
+        restler.post(Constants.UPDATE_SCENE_ENDPOINT, options)
+            .on('complete', function(response) {
+                console.log(response);
 
-            try {
-                fs.accessSync(previewImageFilePath, fs.F_OK);
-                get3DModel();
-            } catch (e) {
-                getPreviewImage();
-            }
-        });
+                // Check to see if the image file exists.
+                try {
+                    fs.accessSync(previewImageFilePath, fs.F_OK);
+                    get3DModel();
+                } catch (e) {
+                    getPreviewImage();
+                }
+            });
     }
 
     function getPreviewImage() {
         restler.get(Constants.MAKE_IMAGE_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
-        .on('complete', function(response) {
-            if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
-                console.log("410 Error, Retrying now...");
-                if (retryAttempts < 10) {
-                    tryAgain();
-                    retryAttempts++;
-                    return;
-                } else {
-                    console.log("Servers too crazy atm, try again later.");
-                    res.status(500).end();
-                }
-            } else {
-                fs.writeFile(previewImageFilePath, response, function(err) {
-                    if (err) {
-                        return console.log(err);
+            .on('complete', function(response) {
+                if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
+                    console.log("410 Error, Retrying now...");
+                    if (retryAttempts < 10) {
+                        tryAgain();
+                        retryAttempts++;
+                        return;
+                    } else {
+                        console.log("Servers too crazy atm, try again later.");
+                        res.status(500).end();
                     }
-                });
-                get3DModel();
-            }
-        });
+                } else {
+                    fs.writeFile(previewImageFilePath, response, function(err) {
+                        if (err) {
+                            return console.log(err);
+                        }
+                    });
+                    get3DModel();
+                }
+            });
     }
 
     function get3DModel() {
         restler.get(Constants.SAVE_MODEL_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
-        .on('complete', function(response) {
-            if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
-                console.log("410 Error, Retrying now...");
-                if (retryAttempts < 10) {
-                    tryAgain();
-                    retryAttempts++;
-                    return;
-                } else {
-                    console.log("Servers too crazy atm, try again later.");
-                    res.status(500).end();
-                }
-            } else {
-                fs.writeFile(stlFilePath, response, function(err) {
-                    if (err) {
-                        return console.log(err);
+            .on('complete', function(response) {
+                if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
+                    console.log("410 Error, Retrying now...");
+                    if (retryAttempts < 10) {
+                        tryAgain();
+                        retryAttempts++;
+                        return;
+                    } else {
+                        console.log("Servers too crazy atm, try again later.");
+                        res.status(500).end();
                     }
-                    runPythonFixer();
-                });
-            }
-        });
+                } else {
+                    fs.writeFile(stlFilePath, response, function(err) {
+                        if (err) {
+                            return console.log(err);
+                        }
+                        runPythonFixer();
+                    });
+                }
+            });
     }
 
     // execute python script for importing, decimating, and exporting
     function runPythonFixer() {
-        exec('sudo blender -b -P 3dFiles/import_decimate_export.py -- ' + stlFilePath, callback);
-
-        function callback(error, stdout, stderr) {
+        exec('sudo blender -b -P 3dFiles/import_decimate_export.py -- ' + stlFilePath, function(error, stdout, stderr) {
             console.log('Running python script');
-                console.log(error);
-                console.log(stdout);
-                console.log(stderr);
-            if (error) {
-                console.log(error);
-                console.log(stdout);
-                console.log(stderr);
-            } else {
+            if (error !== null) {
                 console.log("Success\n");
+            } else {
+                console.log("Error\n");
+                console.log("stdout: " + stdout);
+                console.log("stderr: " + stderr);
             }
-
             runFbxConv();
-        }
+        });
     }
 
     // execute fbx-conv
     function runFbxConv() {
-        exec('../conversion-tools/fbx-conv/fbx-conv-lin64 ' + fbxFilePath + ' ' + g3dbFilePath, callback);
-
-        function callback(error, stdout, stderr) {
+        exec('../conversion-tools/fbx-conv/fbx-conv-lin64 ' + fbxFilePath + ' ' + g3dbFilePath, function (error, stdout, stderr) {
             console.log('Running fbx-conv');
-            if (error) {
-                console.log(error);
-                console.log(stderr);
-            } else {
+            if (error !== null) {
                 console.log("Success\n");
+            } else {
+                console.log("stdout: " + stdout);
+                console.log("stderr: " + stderr);
             }
             zipModels();
-        }
+        });
     }
 
     function zipModels() {
-        exec('zip -j ' + zipFilePath + ' ' + stlFilePath + ' ' + g3dbFilePath + ' ' + previewImageFilePath, callback);
-
-        function callback(error, stdout, stderr) {
+        exec('zip -j ' + zipFilePath + ' ' + stlFilePath + ' ' + g3dbFilePath + ' ' + previewImageFilePath, function (error, stdout, stderr) {
             console.log('Zipping files...');
             console.log(stdout);
-            if (error) {
-                console.log(error);
-                console.log(stderr);
-            } else {
+            if (error !== null) {
                 console.log("Success\n");
+            } else {
+                console.log("stdout: " + stdout);
+                console.log("stderr: " + stderr);
             }
             sendModels();
-        }
+        });
     }
 
     function sendModels() {
@@ -166,7 +154,6 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
                 if (retryAttempts < 10) {
                     tryAgain();
                     retryAttempts++;
-                    return;
                 } else {
                     console.log(err);
                     res.status(err.status || 500).end();
@@ -180,50 +167,22 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
 
     function cleanUp() {
         console.log("Cleaning " + req.file.originalname);
-
-        fs.unlink(req.file.path, function(err) {
-            if (err) {
-                console.log(err);
-            }
-        });
-        console.log("Deleted source image");
-
-        fs.unlink(stlFilePath, function(err) {
-            if (err) {
-                console.log(err);
-            }
-        });
-        console.log("Deleted stlFile");
-
-        fs.unlink(fbxFilePath, function(err) {
-            if (err) {
-                console.log(err);
-            }
-        });
-        console.log("Deleted fbxFile");
-
-        fs.unlink(g3dbFilePath, function(err) {
-            if (err) {
-                console.log(err);
-            }
-        });
-        console.log("Deleted g3dbFile");
-
-        fs.unlink(zipFilePath, function(err) {
-            if (err) {
-                console.log(err);
-            }
-        });
-        console.log("Deleted zipFile");
-
-        fs.unlink(previewImageFilePath, function(err) {
-            if (err) {
-                console.log(err);
-            }
-        });
-        console.log("Deleted preview image");
+        var files = [req.file.path, stlFilePath, fbxFilePath, g3dbFilePath, zipFilePath, previewImageFilePath];
+        for (var i = 0, len = files.length; i < len; i++) {
+            deleteFile(files[i]);
+        }
     }
 
+    function deleteFile(file) {
+        fs.unlink(file, function(err) {
+            if (err !== null) {
+                console.log("Deleted " + String(file));
+            } else {
+                console.log("Something wrong happened when trying to delete " +
+                    String(file) + ": " + err);
+            }
+        });
+    }
 });
 
 app.listen(process.env.PORT, function() {
