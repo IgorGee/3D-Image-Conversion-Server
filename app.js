@@ -9,43 +9,10 @@ var multer = require('multer');
 var upload = multer({dest:'./uploads/'});
 var bodyParser = require('body-parser');
 var exec = require('child_process').exec;
-var Constants = require(__dirname + '/Constants.js')
-
-var braintree = require("braintree");
-var gateway = braintree.connect({
-    environment: braintree.Environment.Sandbox,
-    merchantId: "2b663n6dzs7dcykd",
-    publicKey: "zqhqpx9pwm2ksnt8",
-    privateKey: "df68d33d893c85ed24eea55aa76c7924"
-});
+var Constants = require(__dirname + '/Constants.js');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-app.get('/client_token', function(req, res){
-    gateway.clientToken.generate({}, function(err, response) {
-        console.log(err);
-        res.send(response.clientToken);
-        console.log("Just gave client a token");
-    });
-});
-
-app.post('/checkout', function(req, res){
-    var nonce = req.body.payment_method_nonce;
-    console.log(nonce);
-    console.log("Someone just paid us....");
-    gateway.transaction.sale({
-        amount: '42.42',
-        paymentMethodNonce: nonce,
-        options: {
-            submitForSettlement: true
-        }
-    }, function(err, result) {
-        if (!err) {
-            console.log("We just made bank");
-        }
-    });
-});
 
 app.get('/', function(req, res) {
     res.send('hello world');
@@ -61,7 +28,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     var zipFilePath = "./3dFiles/" + req.file.filename + ".zip";
 
     console.log("Request File: ");
-    console.log(req.file)
+    console.log(req.file);
 
     tryAgain();
 
@@ -74,7 +41,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
                 jobID: uuidJS,
                 script: Constants.JS_2D_TO_3D
             }
-        }
+        };
 
         restler.post(Constants.UPDATE_SCENE_ENDPOINT, options).on('complete', function(response) {
             console.log();
@@ -96,7 +63,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
         restler.get(Constants.MAKE_IMAGE_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
         .on('complete', function(response) {
             if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
-                console.log("410 Error, Retrying now...")
+                console.log("410 Error, Retrying now...");
                 if (retryAttempts < 10) {
                     tryAgain();
                     retryAttempts++;
@@ -120,7 +87,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
         restler.get(Constants.SAVE_MODEL_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
         .on('complete', function(response) {
             if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
-                console.log("410 Error, Retrying now...")
+                console.log("410 Error, Retrying now...");
                 if (retryAttempts < 10) {
                     tryAgain();
                     retryAttempts++;
