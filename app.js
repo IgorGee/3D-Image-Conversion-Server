@@ -44,8 +44,8 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
         };
 
         restler.post(Constants.UPDATE_SCENE_ENDPOINT, options)
-            .on('complete', function(response) {
-                console.log(response);
+            .on('complete', function(data, response) {
+                console.log("UpdateScene response code: " + response.statusCode);
 
                 // Check to see if the image file exists.
                 try {
@@ -59,49 +59,49 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
 
     function getPreviewImage() {
         restler.get(Constants.MAKE_IMAGE_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
-            .on('complete', function(response) {
-                if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
-                    console.log("410 Error, Retrying now...");
-                    if (retryAttempts < 10) {
-                        tryAgain();
-                        retryAttempts++;
-                        return;
-                    } else {
-                        console.log("Servers too crazy atm, try again later.");
-                        res.status(500).end();
+            .on('success', function(data, response) {
+                fs.writeFile(previewImageFilePath, data, function(err) {
+                    if (err) {
+                        console.log(err);
+                        res.status(500).send("Couldn't process image file");
                     }
-                } else {
-                    fs.writeFile(previewImageFilePath, response, function(err) {
-                        if (err) {
-                            return console.log(err);
-                        }
-                    });
                     get3DModel();
+                });
+            })
+            .on('fail', function(data, response){
+                if (retryAttempts < 10) {
+                    tryAgain();
+                    retryAttempts++;
+                } else {
+                    res.status(500).send("Servers are really busy or broken. Try again later.");
                 }
+            })
+            .on('complete', function(data, response) {
+                console.log("Preview image response code: " + response.statusCode);
             });
     }
 
     function get3DModel() {
         restler.get(Constants.SAVE_MODEL_CACHED_ENDPOINT + uuidJS, {decoding: 'buffer'})
-            .on('complete', function(response) {
-                if (!(response instanceof Object) && response.indexOf("<title>Error 410 Job not cached</title>") > -1) {
-                    console.log("410 Error, Retrying now...");
-                    if (retryAttempts < 10) {
-                        tryAgain();
-                        retryAttempts++;
-                        return;
-                    } else {
-                        console.log("Servers too crazy atm, try again later.");
-                        res.status(500).end();
+            .on('success', function(data, response) {
+                fs.writeFile(stlFilePath, data, function(err) {
+                    if (err !== null){
+                        console.log(err);
+                        res.status(500).send("Couldn't process object file");
                     }
+                    runPythonFixer();
+                });
+            })
+            .on('fail', function(data, response) {
+                if (retryAttempts < 10) {
+                    tryAgain();
+                    retryAttempts++;
                 } else {
-                    fs.writeFile(stlFilePath, response, function(err) {
-                        if (err) {
-                            return console.log(err);
-                        }
-                        runPythonFixer();
-                    });
+                    res.status(500).send("Servers are really busy or broken. Try again later.");
                 }
+            })
+            .on('complete', function(data, response) {
+                console.log("Model response code: " + response.statusCode);
             });
     }
 
@@ -109,13 +109,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     function runPythonFixer() {
         exec('sudo blender -b -P 3dFiles/import_decimate_export.py -- ' + stlFilePath, function(error, stdout, stderr) {
             console.log('Running python script');
-            if (error !== null) {
-                console.log("Success\n");
-            } else {
-                console.log("Error\n");
-                console.log("stdout: " + stdout);
-                console.log("stderr: " + stderr);
-            }
+            printResult(error, stdout, stderr);
             runFbxConv();
         });
     }
@@ -124,12 +118,7 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     function runFbxConv() {
         exec('../conversion-tools/fbx-conv/fbx-conv-lin64 ' + fbxFilePath + ' ' + g3dbFilePath, function (error, stdout, stderr) {
             console.log('Running fbx-conv');
-            if (error !== null) {
-                console.log("Success\n");
-            } else {
-                console.log("stdout: " + stdout);
-                console.log("stderr: " + stderr);
-            }
+            printResult(error, stdout, stderr);
             zipModels();
         });
     }
@@ -137,30 +126,24 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
     function zipModels() {
         exec('zip -j ' + zipFilePath + ' ' + stlFilePath + ' ' + g3dbFilePath + ' ' + previewImageFilePath, function (error, stdout, stderr) {
             console.log('Zipping files...');
-            console.log(stdout);
-            if (error !== null) {
-                console.log("Success\n");
-            } else {
-                console.log("stdout: " + stdout);
-                console.log("stderr: " + stderr);
-            }
+            printResult(error, stdout, stderr);
             sendModels();
         });
     }
 
     function sendModels() {
         res.sendFile(zipFilePath, {root: __dirname}, function(err) {
-            if (err) {
+            if (err !== null) {
+                console.log('Sent: ' + zipFilePath);
+                cleanUp();
+            } else {
                 if (retryAttempts < 10) {
                     tryAgain();
                     retryAttempts++;
                 } else {
                     console.log(err);
-                    res.status(err.status || 500).end();
+                    res.status(err.status || 500).send("Failure 10/10.");
                 }
-            } else {
-                console.log('Sent: ' + zipFilePath);
-                cleanUp();
             }
         });
     }
@@ -175,13 +158,17 @@ app.post('/image', upload.single('shapeJS_img'), function(req, res) {
 
     function deleteFile(file) {
         fs.unlink(file, function(err) {
-            if (err !== null) {
-                console.log("Deleted " + String(file));
-            } else {
-                console.log("Something wrong happened when trying to delete " +
-                    String(file) + ": " + err);
-            }
+            // console.log("Deleted " + String(file));
         });
+    }
+
+    function printResult(error, stdout, stderr) {
+            if (error !== null) {
+                console.log("Success\n");
+            } else {
+                console.log("stdout: " + stdout);
+                console.log("stderr: " + stderr);
+            }
     }
 });
 
