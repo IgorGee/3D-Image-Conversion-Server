@@ -1,0 +1,9 @@
+{
+	"app": {
+		"name": "Your_Name",
+		"key": "Your_Consumer_Key",
+		"secret": "Your_Consumer_Secret",
+		"oauth_token": "Your_Access_Token",
+		"oauth_secret": "Your_Access_Secret"
+	}
+}
