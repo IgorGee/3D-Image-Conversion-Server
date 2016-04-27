@@ -108,6 +108,34 @@ app.get('/cart', function(req, res) {
     });
 });
 
+app.post('/model', function(req, res) {
+    console.dir(Object.keys(req.body));
+
+    var post_body = {
+        file: req.body.file,
+        fileName: req.body.fileName,
+        acceptTermsAndConditions: req.body.acceptTermsAndConditions,
+        hasRightsToModel: req.body.hasRightsToModel,
+        isDownloadable: req.body.isDownloadable,
+        isForSale: req.body.isForSale,
+        isPublic: req.body.isPublic,
+        materials: req.body.materials
+    };
+
+    console.log("JSON post body", JSON.stringify(post_body));
+
+    client.post(Shapeways.Model, config.app.oauth_token, config.app.oauth_secret, JSON.stringify(post_body), function(err, data, response) {
+        if (err) {console.error(err);}
+        else {
+            console.dir(data);
+            require('fs').writeFile('upload_model_response.txt', data, function(err) {
+                if (err) {console.error(err);}
+            })
+            res.status(200).send(data);
+        }
+    });
+});
+
 app.listen(process.env.PORT, function() {
     console.log('Listening on Port ' + process.env.PORT);
 });
