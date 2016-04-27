@@ -14,8 +14,8 @@ var uuid = require('node-uuid'),
     prompt = require('prompt'),
     querystring = require('querystring');
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 app.get('/', function(req, res) {
     res.send('hello world');
