@@ -1,5 +1,4 @@
 var uuid = require('node-uuid'),
-    request = require('request'),
     express = require('express'),
     app = express(),
     multer = require('multer'),
