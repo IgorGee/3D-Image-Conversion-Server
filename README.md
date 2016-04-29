@@ -1,4 +1,4 @@
-3D Image Conversion Server
+Carbonizr Server
 ======
 
 A node server that powers the [Carbonizr](https://github.com/IgorGee/Carbonizr "Carbonizr") app.
